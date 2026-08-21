@@ -1,8 +1,8 @@
 # SIDEQUEST — Career Campaign Planner
 
-Your career change, played like a retro RPG campaign. Build your character (current job + skill inventory), pick the final boss (target role), and get back an honest read, a month-by-month quest log, a skill-stats radar, an XP curve, and curated power-ups.
+A career transition planner with a retro pixel aesthetic. Enter your current role, skills, and the role you want next — get back an honest read on the gap, a month-by-month roadmap, a skills radar, a readiness curve, and curated course recommendations.
 
-Powered by **Gemini 3.7 Flash** with **live Google Search grounding** — the plan is based on what the target company and role actually look like right now, and the sources it used are listed in the plan.
+Powered by **Gemini 3.7 Flash** with **live Google Search grounding** — the plan is based on what the target company and role actually look like right now, and the sources it used are listed in the plan. Search grounding can be toggled off in the app if your API key or tier rejects it.
 
 ## Run it
 
@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open the printed localhost URL, paste your Gemini API key into the "Insert Cartridge" panel, and press Start.
+Open the printed localhost URL, paste your Gemini API key into the "Connect" panel, and build your plan.
 
 ## Gemini API key
 
