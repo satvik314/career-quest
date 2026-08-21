@@ -3,7 +3,7 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { callGemini, loadApiKey, saveApiKey, GEMINI_MODEL } from "./lib/gemini";
+import { callGemini, loadApiKey, saveApiKey, loadUseSearch, saveUseSearch, GEMINI_MODEL } from "./lib/gemini";
 
 /* ============================================================
    SIDEQUEST — your career change, played like a campaign.
@@ -203,8 +203,8 @@ const SKILL_SUGGESTIONS = [
   "Project mgmt", "Communication", "Design", "Marketing", "Sales", "People mgmt",
 ];
 
-const BOSS = { comfortable: "MINI-BOSS", stretch: "BOSS FIGHT", hard: "FINAL BOSS" };
-const BOSS_HEARTS = { comfortable: 1, stretch: 2, hard: 3 };
+const DIFFICULTY = { comfortable: "WITHIN REACH", stretch: "A STRETCH", hard: "A BIG LEAP" };
+const DIFFICULTY_HEARTS = { comfortable: 1, stretch: 2, hard: 3 };
 
 /* ================= pixel sprites ================= */
 /* 0 empty · 1 ink · 2 blue · 3 white */
@@ -279,7 +279,7 @@ function WalkToExit({ progress }) {
         }} />
       ))}
       <div className="absolute" style={{ right: "3%", bottom: 29 }}>
-        <Sprite map={DOOR_MAP} size={5} label="Exit door: the target role" />
+        <Sprite map={DOOR_MAP} size={5} label="The door to the target role" />
       </div>
       <div
         className="absolute"
@@ -288,7 +288,7 @@ function WalkToExit({ progress }) {
         <Sprite map={HERO_MAP} size={5} className={progress < 7 ? "bob" : ""} label="Your character" />
       </div>
       <div className="lbl absolute" style={{ top: 10, left: 14 }}>
-        {progress === 7 ? <span className="flash px-1">DOOR UNLOCKED</span> : `${7 - progress} STEPS TO THE DOOR`}
+        {progress === 7 ? <span className="flash px-1">READY TO GO</span> : `${7 - progress} STEPS TO GO`}
       </div>
     </div>
   );
@@ -373,7 +373,7 @@ function XpTip({ active, payload }) {
   return (
     <div className="hudtip">
       <div className="ht">{d.m}</div>
-      <div className="hv" style={{ color: "#8D97FF" }}>{d.r} XP</div>
+      <div className="hv" style={{ color: "#8D97FF" }}>{d.r}/100</div>
       <div style={{ fontFamily: "var(--body)", fontSize: 12.5, lineHeight: 1.45, marginTop: 6 }}>{d.focus}</div>
     </div>
   );
@@ -407,8 +407,8 @@ function StatsRadar({ skills }) {
           <PolarGrid stroke="#C9CEF5" strokeWidth={2} />
           <PolarAngleAxis dataKey="subject" tick={{ ...pxTick, fontSize: 15 }} />
           <PolarRadiusAxis domain={[0, 10]} tick={false} axisLine={false} />
-          <Radar name="Boss requires" dataKey="need" stroke="#0A0A0F" strokeWidth={2.5} strokeDasharray="6 5" fill="#0A0A0F" fillOpacity={0.05} isAnimationActive={!REDUCED} />
-          <Radar name="Your stats" dataKey="you" stroke="#1D2BFF" strokeWidth={3} fill="#1D2BFF" fillOpacity={0.3} isAnimationActive={!REDUCED} />
+          <Radar name="Role requires" dataKey="need" stroke="#0A0A0F" strokeWidth={2.5} strokeDasharray="6 5" fill="#0A0A0F" fillOpacity={0.05} isAnimationActive={!REDUCED} />
+          <Radar name="Your level" dataKey="you" stroke="#1D2BFF" strokeWidth={3} fill="#1D2BFF" fillOpacity={0.3} isAnimationActive={!REDUCED} />
           <Tooltip content={<RadarTip />} />
         </RadarChart>
       </ResponsiveContainer>
@@ -420,9 +420,9 @@ function StatsRadar({ skills }) {
 function XpChart({ baseline, phases }) {
   const clamp = (n) => Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
   const data = [
-    { m: "START", r: clamp(baseline), focus: "Where you spawn: your readiness before the campaign begins." },
+    { m: "START", r: clamp(baseline), focus: "Where you start: your readiness before the plan begins." },
     ...(phases || []).map((p, i) => ({
-      m: `LVL ${i + 1}`,
+      m: `MONTH ${i + 1}`,
       r: clamp(p.readiness),
       focus: p.focus || "",
     })),
@@ -486,12 +486,12 @@ function Inventory({ value, onChange }) {
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKey}
           onBlur={() => draft.trim() && add(draft)}
-          placeholder={value.length ? "Add another…" : "Type a skill, press Enter to equip"}
+          placeholder={value.length ? "Add another…" : "Type a skill, press Enter to add"}
           aria-label="Skills you use in your current job"
         />
       </div>
       <div className="flex items-center justify-between mt-2">
-        <span className="crt" style={{ fontSize: 17, color: "var(--dim)" }}>{value.length}/10 SLOTS USED</span>
+        <span className="crt" style={{ fontSize: 17, color: "var(--dim)" }}>{value.length}/10 SKILLS ADDED</span>
       </div>
       {suggestions.length > 0 && value.length < 10 && (
         <div className="flex flex-wrap gap-2 mt-2">
@@ -519,15 +519,15 @@ RULES
 
 /* ---------------- API key gate ---------------- */
 
-function ApiKeyPanel({ apiKey, onSave }) {
+function ApiKeyPanel({ apiKey, onSave, useSearch, onToggleSearch }) {
   const [draft, setDraft] = useState(apiKey);
   const [show, setShow] = useState(false);
   const saved = apiKey && draft === apiKey;
   return (
     <div className="card card--ink p-6 md:p-8 mb-12" style={{ background: "var(--panel)" }}>
-      <div className="lbl mb-2">▸ INSERT CARTRIDGE · GEMINI API KEY</div>
+      <div className="lbl mb-2">▸ CONNECT · GEMINI API KEY</div>
       <p className="crt mb-4" style={{ fontSize: 18, color: "var(--dim)" }}>
-        RUNS ON {GEMINI_MODEL.toUpperCase()} WITH LIVE GOOGLE SEARCH. THE KEY STAYS IN YOUR BROWSER — CALLS GO STRAIGHT TO GOOGLE.
+        RUNS ON {GEMINI_MODEL.toUpperCase()}. THE KEY STAYS IN YOUR BROWSER — CALLS GO STRAIGHT TO GOOGLE.
       </p>
       <div className="flex flex-wrap gap-3 items-stretch">
         <div className="flex-1 min-w-[240px]">
@@ -544,11 +544,27 @@ function ApiKeyPanel({ apiKey, onSave }) {
         </div>
         <button type="button" className="btn-b" onClick={() => setShow((s) => !s)}>{show ? "Hide" : "Show"}</button>
         <button type="button" className="btn-b" disabled={!draft.trim() || saved} onClick={() => onSave(draft.trim())}>
-          {saved ? "Equipped ✓" : "Equip key"}
+          {saved ? "Saved ✓" : "Save key"}
         </button>
       </div>
+      <div className="flex flex-wrap items-center gap-3 mt-4">
+        <button
+          type="button"
+          className="opt"
+          data-on={useSearch}
+          aria-pressed={useSearch}
+          onClick={() => onToggleSearch(!useSearch)}
+        >
+          Live Google Search: {useSearch ? "ON" : "OFF"}
+        </button>
+        <span className="crt" style={{ fontSize: 17, color: "var(--dim)" }}>
+          {useSearch
+            ? "THE PLAN IS GROUNDED IN LIVE WEB RESEARCH."
+            : "TURNED OFF — USEFUL IF YOUR KEY REJECTS SEARCH GROUNDING."}
+        </span>
+      </div>
       <p className="crt mt-3" style={{ fontSize: 17, color: "var(--dim)" }}>
-        NO KEY YET? FORGE ONE FREE AT{" "}
+        NO KEY YET? CREATE ONE FREE AT{" "}
         <a className="srclink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">
           AISTUDIO.GOOGLE.COM/APIKEY
         </a>
@@ -567,8 +583,9 @@ export default function SideQuest() {
   const [error, setError] = useState(null);
   const [done, setDone] = useState({}); // checkable quest milestones
   const [apiKey, setApiKey] = useState(loadApiKey);
+  const [useSearch, setUseSearch] = useState(loadUseSearch);
 
-  const heading = useTypewriter("PRESS START ON THE JOB YOU ACTUALLY WANT.");
+  const heading = useTypewriter("A REAL PLAN FOR THE JOB YOU ACTUALLY WANT.");
 
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const answered = [
@@ -587,6 +604,12 @@ export default function SideQuest() {
     setError(null);
   }
 
+  function toggleSearch(on) {
+    setUseSearch(on);
+    saveUseSearch(on);
+    setError(null);
+  }
+
   async function generate() {
     setStage("loading"); setStep(0); setError(null); setDone({});
     const P = `Currently: ${f.role} at ${f.company}, ${f.years} years there.
@@ -596,7 +619,7 @@ Time available: ${f.horizon}.`;
 
     const allSources = [];
     const ask = async (prompt) => {
-      const { data, sources } = await callGemini(apiKey, prompt);
+      const { data, sources } = await callGemini(apiKey, prompt, { useSearch });
       allSources.push(...sources);
       return data;
     };
@@ -645,10 +668,14 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
       setPlan((p) => ({ ...p, ...c, sources })); setStep(3);
       setStage("plan");
     } catch (e) {
+      console.error("[SIDEQUEST] plan generation failed", e);
       setError(
         e?.badKey
-          ? "Gemini rejected the API key. Re-check it below and equip it again."
-          : "The plan could not be generated. That is usually a temporary API issue — try again."
+          ? `Gemini rejected the API key: "${e.message}" — re-check it below and save it again.`
+          : `The plan could not be generated. Gemini said: "${e?.message || "unknown error"}". ` +
+            (useSearch
+              ? "If that mentions search, grounding, or tools, switch Live Google Search off below and try again."
+              : "Try again in a moment — if it persists, check your key's quota in AI Studio.")
       );
       setStage("form");
     }
@@ -691,13 +718,13 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
         <Sprite map={HERO_MAP} size={2.4} />
         <span className="px" style={{ fontSize: 14 }}>SIDEQUEST</span>
       </div>
-      <span className="crt" style={{ fontSize: 18, color: "var(--dim)" }}>CAREER CAMPAIGN PLANNER v2.0</span>
+      <span className="crt" style={{ fontSize: 18, color: "var(--dim)" }}>CAREER TRANSITION PLANNER v2.0</span>
     </header>
   );
 
   /* ---------- loading ---------- */
   if (stage === "loading") {
-    const steps = ["READING YOUR SAVE FILE", "SCOUTING THE OVERWORLD (GOOGLE SEARCH)", "GENERATING QUEST LOG"];
+    const steps = ["REVIEWING YOUR PROFILE", "RESEARCHING THE MARKET (GOOGLE SEARCH)", "BUILDING YOUR ROADMAP"];
     return (
       <div className="qz min-h-screen">
         <style>{STYLES}</style>
@@ -706,7 +733,7 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
           <div className="card p-10 md:p-12 max-w-[500px] w-full">
             <div className="flex justify-center mb-6"><Sprite map={HERO_MAP} size={7} className="bob" /></div>
             <div className="px text-center" style={{ fontSize: 14, lineHeight: 1.9 }}>NOW LOADING<span className="blink">▮</span></div>
-            <p className="crt text-center mt-2 mb-7" style={{ color: "var(--dim)" }}>ABOUT 30 SECONDS. DO NOT TURN OFF THE CONSOLE.</p>
+            <p className="crt text-center mt-2 mb-7" style={{ color: "var(--dim)" }}>ABOUT 30 SECONDS. LIVE RESEARCH TAKES A MOMENT.</p>
             <div className="space-y-3 mb-7">
               {steps.map((s, i) => (
                 <div key={s} className="crt flex items-center gap-3" style={{ fontSize: 19, color: i < step ? "var(--ink)" : i === step ? "var(--blue-dk)" : "var(--dim)" }}>
@@ -732,7 +759,7 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
   /* ---------- plan (quest log) ---------- */
   if (stage === "plan") {
     const r = plan.read || {};
-    const hearts = BOSS_HEARTS[r.difficulty] || 2;
+    const hearts = DIFFICULTY_HEARTS[r.difficulty] || 2;
     return (
       <div className="qz min-h-screen">
         <style>{STYLES}</style>
@@ -743,39 +770,39 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
           {/* status screen */}
           <Reveal>
             <div className="card mt-10 p-7 md:p-10">
-              <div className="lbl mb-4">▸ STATUS SCREEN</div>
+              <div className="lbl mb-4">▸ YOUR SNAPSHOT</div>
               <h1 className="px" style={{ fontSize: "clamp(15px,3.4vw,26px)", lineHeight: 1.75 }}>
                 {f.role}<br />
                 <span style={{ color: "var(--blue)" }}>▶ {f.targetRole}</span>
               </h1>
               <div className="crt mt-4 flex flex-wrap gap-x-6 gap-y-1" style={{ fontSize: 19, color: "var(--dim)" }}>
-                <span>GUILD: {f.company} → {f.targetCompany}</span>
-                <span>CAMPAIGN: {f.horizon.toUpperCase()}</span>
+                <span>COMPANY: {f.company} → {f.targetCompany}</span>
+                <span>TIMELINE: {f.horizon.toUpperCase()}</span>
                 <span>TENURE: {f.years} YRS</span>
               </div>
               <div className="grid sm:grid-cols-3 gap-4 mt-7">
                 <div className="p-4" style={{ border: "3px solid var(--ink)" }}>
-                  <div className="lbl mb-2">XP TODAY</div>
+                  <div className="lbl mb-2">READINESS TODAY</div>
                   <div className="crt" style={{ fontSize: 40, color: "var(--blue)" }}>
                     <CountUp to={Math.max(0, Math.min(100, Number(r.baseline) || 0))} />/100
                   </div>
                 </div>
                 <div className="p-4" style={{ border: "3px solid var(--ink)" }}>
-                  <div className="lbl mb-2">{BOSS[r.difficulty] || "BOSS"}</div>
+                  <div className="lbl mb-2">{DIFFICULTY[r.difficulty] || "A STRETCH"}</div>
                   <div className="hpbar mt-2" aria-label={`Difficulty ${hearts} of 3`}>
                     {[0, 1, 2].map((i) => <span key={i} data-on={i < hearts} />)}
                   </div>
                   <div className="crt mt-2" style={{ fontSize: 17, color: "var(--dim)" }}>DIFFICULTY</div>
                 </div>
                 <div className="p-4" style={{ border: "3px solid var(--ink)" }}>
-                  <div className="lbl mb-2">INVENTORY</div>
-                  <div className="crt" style={{ fontSize: 40 }}>{f.skills.length}<span style={{ fontSize: 20, color: "var(--dim)" }}> ITEMS</span></div>
+                  <div className="lbl mb-2">SKILLS</div>
+                  <div className="crt" style={{ fontSize: 40 }}>{f.skills.length}<span style={{ fontSize: 20, color: "var(--dim)" }}> LISTED</span></div>
                 </div>
               </div>
               <div className="flex flex-wrap gap-3 mt-7 no-print">
-                <button className="btn-b" onClick={download}>Save game ↓</button>
+                <button className="btn-b" onClick={download}>Download plan ↓</button>
                 <button className="btn-b" onClick={() => window.print()}>Print</button>
-                <button className="btn-b" onClick={() => { setStage("form"); setPlan({}); }}>New game</button>
+                <button className="btn-b" onClick={() => { setStage("form"); setPlan({}); }}>Start over</button>
               </div>
             </div>
           </Reveal>
@@ -783,16 +810,16 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
           {/* stage 1 — the read */}
           <Reveal className="page-break">
             <section className="py-14">
-              <div className="lbl mb-4">▸ STAGE 1 · THE OPENING CUTSCENE</div>
+              <div className="lbl mb-4">▸ STEP 1 · THE HONEST READ</div>
               <p className="px measure" style={{ fontSize: "clamp(13px,2.6vw,19px)", lineHeight: 2 }}>{r.headline}</p>
               <p className="text-[15.5px] leading-[1.8] measure mt-6 mb-8">{r.assessment}</p>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="card card--ink card-hover p-6">
-                  <div className="lbl mb-3">HIDDEN ITEM · WHAT YOU'RE UNDERVALUING</div>
+                  <div className="lbl mb-3">HIDDEN ASSET · WHAT YOU'RE UNDERVALUING</div>
                   <p className="text-[15px] leading-[1.65]">{r.advantage}</p>
                 </div>
                 <div className="card card--ink card-hover p-6" style={{ background: "var(--panel)" }}>
-                  <div className="lbl mb-3">TRAP AHEAD · BIGGEST RISK</div>
+                  <div className="lbl mb-3">WATCH OUT · BIGGEST RISK</div>
                   <p className="text-[15px] leading-[1.65]">{r.risk}</p>
                 </div>
               </div>
@@ -804,9 +831,9 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
           {/* stage 2 — character stats */}
           <Reveal className="page-break">
             <section className="py-14">
-              <div className="lbl mb-4">▸ STAGE 2 · CHARACTER STATS</div>
-              <h2 className="px mb-2" style={{ fontSize: "clamp(13px,2.4vw,18px)", lineHeight: 1.9 }}>YOUR BUILD VS WHAT THE BOSS REQUIRES</h2>
-              <p className="crt mb-8" style={{ fontSize: 19, color: "var(--dim)" }}>BLUE = YOUR STATS · DASHED = REQUIRED. HOVER ANY STAT.</p>
+              <div className="lbl mb-4">▸ STEP 2 · SKILLS ASSESSMENT</div>
+              <h2 className="px mb-2" style={{ fontSize: "clamp(13px,2.4vw,18px)", lineHeight: 1.9 }}>YOUR SKILLS VS WHAT THE ROLE REQUIRES</h2>
+              <p className="crt mb-8" style={{ fontSize: 19, color: "var(--dim)" }}>BLUE = YOUR LEVEL · DASHED = REQUIRED. HOVER ANY SKILL.</p>
               <div className="grid lg:grid-cols-[1fr_1.1fr] gap-8 items-start">
                 <div className="card p-4">
                   <StatsRadar skills={plan.skills || []} />
@@ -831,7 +858,7 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
                           ))}
                         </div>
                         <p className="text-[14px] leading-[1.6] mb-2">{s.why}</p>
-                        <p className="crt" style={{ fontSize: 18, color: "var(--blue-dk)" }}>PROOF DROP: <span style={{ color: "var(--ink)" }}>{s.proveItBy}</span></p>
+                        <p className="crt" style={{ fontSize: 18, color: "var(--blue-dk)" }}>PROVE IT WITH: <span style={{ color: "var(--ink)" }}>{s.proveItBy}</span></p>
                       </div>
                     );
                   })}
@@ -845,9 +872,9 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
           {/* stage 3 — quest log */}
           <Reveal>
             <section className="py-14">
-              <div className="lbl mb-4">▸ STAGE 3 · QUEST LOG</div>
-              <h2 className="px mb-2" style={{ fontSize: "clamp(13px,2.4vw,18px)", lineHeight: 1.9 }}>XP CURVE — EACH MILESTONE IS A LEVEL-UP</h2>
-              <p className="crt mb-7" style={{ fontSize: 19, color: "var(--dim)" }}>HOVER A STEP TO SEE WHAT THE MONTH IS FOR. TICK MILESTONES AS YOU CLEAR THEM.</p>
+              <div className="lbl mb-4">▸ STEP 3 · MONTHLY ROADMAP</div>
+              <h2 className="px mb-2" style={{ fontSize: "clamp(13px,2.4vw,18px)", lineHeight: 1.9 }}>READINESS CURVE — EACH MILESTONE MOVES YOU UP</h2>
+              <p className="crt mb-7" style={{ fontSize: 19, color: "var(--dim)" }}>HOVER A STEP TO SEE WHAT THE MONTH IS FOR. TICK MILESTONES AS YOU COMPLETE THEM.</p>
               <div className="card p-4 md:p-6 mb-9">
                 <XpChart baseline={r.baseline} phases={plan.phases} />
               </div>
@@ -857,10 +884,10 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
                     <div className="card card-hover p-6 md:p-8">
                       <div className="flex flex-wrap items-center gap-3 mb-4">
                         <span className="px" style={{ fontSize: 10, background: "var(--ink)", color: "#fff", padding: "8px 10px 7px" }}>
-                          LVL {i + 1} · {(p.label || "").toUpperCase()}
+                          {(p.label || `MONTH ${i + 1}`).toUpperCase()}
                         </span>
                         <span className="crt" style={{ fontSize: 19 }}>{p.focus}</span>
-                        <span className="crt ml-auto" style={{ fontSize: 19, color: "var(--blue)" }}>{Math.max(0, Math.min(100, Number(p.readiness) || 0))} XP</span>
+                        <span className="crt ml-auto" style={{ fontSize: 19, color: "var(--blue)" }}>{Math.max(0, Math.min(100, Number(p.readiness) || 0))}/100</span>
                       </div>
                       <ul className="space-y-3">
                         {(p.actions || []).map((a, j) => (
@@ -882,7 +909,7 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
                           <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" fill="none" stroke="#fff" strokeWidth="2.5" /></svg>
                         </button>
                         <span className={`text-[14.5px] leading-[1.6] ${done[i] ? "qdone" : ""}`}>
-                          <span className="lbl">CLEAR CONDITION · </span>{p.milestone}
+                          <span className="lbl">MILESTONE · </span>{p.milestone}
                         </span>
                       </div>
                     </div>
@@ -897,9 +924,9 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
           {/* stage 4 — item shop */}
           <Reveal>
             <section className="py-14">
-              <div className="lbl mb-4">▸ STAGE 4 · ITEM SHOP</div>
-              <h2 className="px mb-2" style={{ fontSize: "clamp(13px,2.4vw,18px)", lineHeight: 1.9 }}>POWER-UPS THAT CLOSE A NAMED GAP</h2>
-              <p className="crt mb-8" style={{ fontSize: 19, color: "var(--dim)" }}>NO DECORATIVE CERTIFICATES. EACH ONE MUST DROP AN ARTEFACT.</p>
+              <div className="lbl mb-4">▸ STEP 4 · RECOMMENDED COURSES</div>
+              <h2 className="px mb-2" style={{ fontSize: "clamp(13px,2.4vw,18px)", lineHeight: 1.9 }}>COURSES THAT CLOSE A NAMED GAP</h2>
+              <p className="crt mb-8" style={{ fontSize: 19, color: "var(--dim)" }}>NO DECORATIVE CERTIFICATES. EACH ONE MUST PRODUCE AN ARTEFACT.</p>
               <div className="grid md:grid-cols-2 gap-6">
                 {(plan.courses || []).map((c, i) => {
                   const cat = COURSES.find((x) => x.id === c.catalogId);
@@ -907,17 +934,17 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
                   return (
                     <Reveal key={i} delay={i * 80} className="page-break">
                       <div className="card card-hover p-6 flex flex-col h-full">
-                        <div className="lbl mb-3">EQUIP IN MONTH {c.startInMonth} · BUFFS {String(c.closesSkill || "").toUpperCase()}</div>
+                        <div className="lbl mb-3">START IN MONTH {c.startInMonth} · BUILDS {String(c.closesSkill || "").toUpperCase()}</div>
                         <h3 className="font-semibold text-[17px] mb-1">{cat.title}</h3>
                         <div className="crt mb-4" style={{ fontSize: 18, color: "var(--dim)" }}>{cat.provider.toUpperCase()}</div>
                         <p className="text-[14.5px] leading-[1.6] mb-3 flex-1">{c.why}</p>
-                        <p className="crt mb-5" style={{ fontSize: 18, color: "var(--blue-dk)" }}>CRAFTS: <span style={{ color: "var(--ink)" }}>{c.buildWhileDoingIt}</span></p>
+                        <p className="crt mb-5" style={{ fontSize: 18, color: "var(--blue-dk)" }}>YOU'LL BUILD: <span style={{ color: "var(--ink)" }}>{c.buildWhileDoingIt}</span></p>
                         <div className="crt flex items-center justify-between pt-4" style={{ fontSize: 19, borderTop: "2px dashed var(--ink)" }}>
                           <span>{cat.hours} HRS</span>
-                          <span style={{ color: "var(--blue)" }}>{cat.priceINR === 0 ? "FREE LOOT" : `₹${cat.priceINR.toLocaleString("en-IN")}`}</span>
+                          <span style={{ color: "var(--blue)" }}>{cat.priceINR === 0 ? "FREE" : `₹${cat.priceINR.toLocaleString("en-IN")}`}</span>
                         </div>
                         <a href={cat.url} target="_blank" rel="noopener noreferrer" className="btn-b mt-4 text-center no-print" style={{ textDecoration: "none", display: "block" }}>
-                          Open shop →
+                          View course →
                         </a>
                       </div>
                     </Reveal>
@@ -933,11 +960,11 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
           {plan.outreach && (
             <Reveal>
               <section className="py-14">
-                <div className="lbl mb-4">▸ STAGE 5 · NPC ENCOUNTER</div>
+                <div className="lbl mb-4">▸ STEP 5 · OUTREACH</div>
                 <h2 className="px mb-6" style={{ fontSize: "clamp(13px,2.4vw,18px)", lineHeight: 1.9 }}>WHO TO TALK TO AT {f.targetCompany.toUpperCase()}</h2>
                 <p className="text-[15.5px] leading-[1.75] measure mb-8">{plan.outreach.whoToContact}</p>
                 <div className="dialog">
-                  <div className="lbl mb-4">YOUR DIALOGUE OPTION · READY TO SEND</div>
+                  <div className="lbl mb-4">YOUR MESSAGE · READY TO SEND</div>
                   <p className="text-[15px] leading-[1.8] whitespace-pre-wrap measure">{plan.outreach.message}</p>
                   <div className="crt mt-5 text-right blink" aria-hidden="true" style={{ fontSize: 22, color: "var(--blue)" }}>▼</div>
                 </div>
@@ -949,9 +976,9 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
           {plan.sources?.length > 0 && (
             <Reveal>
               <section className="py-14 pb-24">
-                <div className="lbl mb-4">▸ STAGE 6 · SCOUTING REPORT</div>
-                <h2 className="px mb-2" style={{ fontSize: "clamp(13px,2.4vw,18px)", lineHeight: 1.9 }}>LIVE INTEL FROM GOOGLE SEARCH</h2>
-                <p className="crt mb-6" style={{ fontSize: 19, color: "var(--dim)" }}>THIS CAMPAIGN WAS GROUNDED IN THESE SOURCES, FETCHED MOMENTS AGO.</p>
+                <div className="lbl mb-4">▸ STEP 6 · RESEARCH SOURCES</div>
+                <h2 className="px mb-2" style={{ fontSize: "clamp(13px,2.4vw,18px)", lineHeight: 1.9 }}>LIVE RESEARCH FROM GOOGLE SEARCH</h2>
+                <p className="crt mb-6" style={{ fontSize: 19, color: "var(--dim)" }}>THIS PLAN WAS GROUNDED IN THESE SOURCES, FETCHED MOMENTS AGO.</p>
                 <ul className="space-y-2">
                   {plan.sources.map((s, i) => (
                     <li key={i} className="flex gap-3 text-[14.5px] leading-[1.6]">
@@ -978,15 +1005,15 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
 
         <div className="grid lg:grid-cols-[1.05fr_1fr] gap-12 items-center py-12 md:py-16">
           <div>
-            <div className="lbl mb-5">▸ NEW GAME · 7 INPUTS · 1 CAMPAIGN</div>
+            <div className="lbl mb-5">▸ NEW PLAN · 7 INPUTS · 1 ROADMAP</div>
             <h1 className="px" style={{ fontSize: "clamp(17px,3.6vw,30px)", lineHeight: 1.8, minHeight: "3.6em" }}>
               {heading}<span className="blink">▮</span>
             </h1>
             <p className="text-[16px] leading-[1.7] measure mt-5" style={{ color: "var(--dim)" }}>
-              Build your character: where you play today, the skills in your inventory, and
-              the role you want to unlock. You get an honest read on the boss fight, a
-              month-by-month quest log, and only the power-ups that close a real gap —
-              grounded in live Google Search intel via Gemini.
+              Tell it where you work today, the skills you already have, and the role
+              you want next. You get an honest read on the gap, a month-by-month
+              roadmap, and only the courses that close a real need — grounded in
+              live Google Search research via Gemini.
             </p>
           </div>
           <div className="card p-3">
@@ -1000,39 +1027,39 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
           </div>
         )}
 
-        <ApiKeyPanel apiKey={apiKey} onSave={saveKey} />
+        <ApiKeyPanel apiKey={apiKey} onSave={saveKey} useSearch={useSearch} onToggleSearch={toggleSearch} />
 
         <div className="card p-7 md:p-12 mb-12">
-          <div className="lbl mb-8">▸ CHARACTER CREATION</div>
+          <div className="lbl mb-8">▸ YOUR PROFILE</div>
           <div className="grid md:grid-cols-2 gap-x-8 gap-y-8">
             <label className="block">
-              <span className="lbl block mb-3">01 · CURRENT CLASS</span>
+              <span className="lbl block mb-3">01 · CURRENT ROLE</span>
               <input className="field" value={f.role} onChange={(e) => set("role", e.target.value)} placeholder="Senior Data Analyst" />
             </label>
             <label className="block">
-              <span className="lbl block mb-3">02 · CURRENT GUILD</span>
+              <span className="lbl block mb-3">02 · CURRENT COMPANY</span>
               <input className="field" value={f.company} onChange={(e) => set("company", e.target.value)} placeholder="Freshworks" />
             </label>
             <label className="block">
-              <span className="lbl block mb-3">03 · YEARS PLAYED THERE</span>
+              <span className="lbl block mb-3">03 · YEARS AT THE COMPANY</span>
               <input type="number" min="0" max="50" className="field" value={f.years} onChange={(e) => set("years", e.target.value)} placeholder="4" />
             </label>
             <div className="md:row-span-2">
-              <span className="lbl block mb-1">04 · INVENTORY — SKILLS YOU USE IN THIS JOB</span>
-              <span className="crt block mb-3" style={{ fontSize: 18, color: "var(--dim)" }}>THE CAMPAIGN BUILDS ON WHAT YOU ALREADY CARRY.</span>
+              <span className="lbl block mb-1">04 · SKILL SET — SKILLS YOU USE IN THIS JOB</span>
+              <span className="crt block mb-3" style={{ fontSize: 18, color: "var(--dim)" }}>THE PLAN BUILDS ON WHAT YOU ALREADY HAVE.</span>
               <Inventory value={f.skills} onChange={(v) => set("skills", v)} />
             </div>
             <label className="block">
-              <span className="lbl block mb-3">05 · CLASS TO UNLOCK</span>
+              <span className="lbl block mb-3">05 · TARGET ROLE</span>
               <input className="field" value={f.targetRole} onChange={(e) => set("targetRole", e.target.value)} placeholder="Product Manager" />
             </label>
             <label className="block md:col-span-2">
-              <span className="lbl block mb-3">06 · GUILD TO JOIN</span>
+              <span className="lbl block mb-3">06 · TARGET COMPANY</span>
               <input className="field" value={f.targetCompany} onChange={(e) => set("targetCompany", e.target.value)} placeholder="Razorpay" />
             </label>
             <div className="md:col-span-2">
-              <span className="lbl block mb-1">07 · CAMPAIGN LENGTH</span>
-              <span className="crt block mb-3" style={{ fontSize: 18, color: "var(--dim)" }}>SETS THE CEILING ON WHAT THE QUEST LOG CAN ASK OF YOU.</span>
+              <span className="lbl block mb-1">07 · TIMELINE</span>
+              <span className="crt block mb-3" style={{ fontSize: 18, color: "var(--dim)" }}>SETS THE CEILING ON WHAT THE PLAN CAN ASK OF YOU.</span>
               <div className="flex flex-wrap gap-3">
                 {HORIZONS.map((h) => (
                   <button key={h} type="button" className="opt" data-on={f.horizon === h} onClick={() => set("horizon", h)}>{h}</button>
@@ -1042,7 +1069,7 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
           </div>
 
           <div className="mt-10 pt-8 flex flex-wrap items-center gap-6" style={{ borderTop: "3px solid var(--ink)" }}>
-            <button className="btn" disabled={!ready} onClick={generate}>▶ Start campaign</button>
+            <button className="btn" disabled={!ready} onClick={generate}>▶ Build my plan</button>
             <div className="flex items-center gap-3">
               <span className="flex gap-[4px]" aria-hidden="true">
                 {answered.map((a, i) => (
@@ -1054,9 +1081,9 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
               </span>
               <span className="crt" style={{ fontSize: 19, color: "var(--dim)" }}>
                 {progress === 7 && !apiKey
-                  ? "INSERT CARTRIDGE (API KEY) TO START"
+                  ? "ADD YOUR GEMINI API KEY TO START"
                   : ready
-                    ? <span className="flash px-1">PLAYER READY</span>
+                    ? <span className="flash px-1">READY TO BUILD</span>
                     : `${progress}/7 ANSWERED`}
               </span>
             </div>
@@ -1065,7 +1092,7 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
 
         <div className="grid md:grid-cols-[1fr_1.15fr] gap-10 items-center pb-24">
           <div className="card card--ink p-6" style={{ background: "var(--panel)" }}>
-            <div className="lbl mb-4">TWO SAVE FILES · SAME PLAYTIME</div>
+            <div className="lbl mb-4">TWO CAREER PATHS · SAME YEARS</div>
             <div className="crt space-y-2" style={{ fontSize: 20 }}>
               <div className="flex items-center gap-3">
                 <span style={{ width: 90 }}>GROWTH</span>
@@ -1086,14 +1113,14 @@ Recommend at most 3 courses that fit inside ${f.horizon}. Be concise.`);
             </div>
           </div>
           <div>
-            <div className="lbl mb-4">WHY IT ASKS YOUR PLAYTIME</div>
+            <div className="lbl mb-4">WHY IT ASKS YOUR TENURE</div>
             <p className="px" style={{ fontSize: "clamp(12px,2.2vw,15px)", lineHeight: 2 }}>
-              FOUR YEARS CAN MEAN FOUR YEARS OF XP — OR ONE YEAR REPLAYED FOUR TIMES.
+              FOUR YEARS CAN MEAN FOUR YEARS OF GROWTH — OR ONE YEAR REPEATED FOUR TIMES.
             </p>
             <p className="text-[15px] leading-[1.7] mt-4" style={{ color: "var(--dim)" }}>
-              It changes what the quest log leads with. A long save file in a static role usually
-              means the first quest isn't learning anything new — it's making the XP you already
-              earned visible to the next guild.
+              It changes what the roadmap leads with. A long stint in a static role usually
+              means the first step isn't learning anything new — it's making the experience
+              you already earned visible to the next employer.
             </p>
           </div>
         </div>
